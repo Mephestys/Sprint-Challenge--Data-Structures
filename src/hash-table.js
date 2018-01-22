@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable class-methods-use-this */
-const { LimitedArray, getIndexBelowMax } = require('./hash-table-helpers');
+const { LimitedArray, getIndexBelowMax, LinkedList } = require('./hash-table-helpers');
 
 class HashTable {
   constructor(limit = 8) {
@@ -34,14 +34,31 @@ class HashTable {
   // If no bucket has been created for that index, instantiate a new bucket and add the key, value pair to that new bucket
   // If the key already exists in the bucket, the newer value should overwrite the older value associated with that key
   insert(key, value) {
-    if (this.capacityIsFull()) this.resize();
-    const index = getIndexBelowMax(key.toString(), this.limit);
-    let bucket = this.storage.get(index) || [];
+    if (this.capacityIsFull()) this.resize(); // double storage when 75% full
 
-    bucket = bucket.filter(item => item[0] !== key);
-    bucket.push([key, value]);
-    this.storage.set(index, bucket);
+    const index = getIndexBelowMax(key.toString(), this.limit);
+    let storage = this.storage.get(index) || [];
+
+    if (key === this.keyCheck(key)) {
+      storage = storage.filter(item => item[0] !== key);
+      storage.push([key, value]);
+      this.storage.set(index, storage);
+    }
+
+    const bucket = new LinkedList();
+    bucket.addToTail(value);
+    storage.push([key, value], [bucket]);
+    this.storage.set(index, storage);
+
+    // check to see if there is something at that index already
+    // if it's empty, just add the value and move on.
+    // if there is, check to see if there is a linked list bucket there
+    //  if no linked list exists, create one
+    //  make the original object the beginning of the list,
+    //  attach the new object to the list
+    // if there is already a linked list, simply add the newest object to the list
   }
+
   // Removes the key, value pair from the hash table
   // Fetch the bucket associated with the given key using the getIndexBelowMax function
   // Remove the key, value pair from the bucket
@@ -66,6 +83,16 @@ class HashTable {
     }
 
     return retrieved ? retrieved[1] : undefined;
+  }
+  keyCheck(key) {
+    const index = getIndexBelowMax(key.toString(), this.limit);
+    const bucket = this.storage.get(index);
+    let retrieved;
+    if (bucket) {
+      retrieved = bucket.filter(item => item[0] === key)[0];
+    }
+
+    return retrieved ? retrieved[0] : undefined;
   }
 }
 
